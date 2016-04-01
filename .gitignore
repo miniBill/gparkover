@@ -1,0 +1,17 @@
+*.backup
+_minted-main/
+*.out
+*.log
+*.pdf
+*.blg
+*.bbl
+*.bcf
+*.run.xml
+main.atfi
+*.o
+*.hi
+dist
+.stack-work
+main.toc
+*.aux
+*.synctex.gz

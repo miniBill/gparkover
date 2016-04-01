@@ -1,0 +1,43 @@
+\documentclass[a4paper,10pt]{scrartcl}
+
+\usepackage{fontspec}
+\setmainfont{Linux Libertine O}
+\setmonofont{FreeMono}
+
+\usepackage{minted}
+\newminted[code]{haskell}{samepage=true}
+\newminted[breakcode]{haskell}{samepage=true, breaklines = true}
+
+\title{GParkOver - Disaster recovery for gparted damages}
+\author{Leonardo Taglialegne}
+%\date{}
+
+\usepackage[pdfauthor={Leonardo Taglialegne},
+            pdftitle={GParkOver - Disaster recovery for gparted damages},
+            pdfsubject={Recovering partitions},
+            pdfkeywords={Haskell,GParted,recovery},
+            pdfproducer={XeLaTeX with hyperref},
+            pdfcreator={Xelatex}]{hyperref}
+\usepackage{metalogo}
+
+\usepackage{attachfile2}
+\attachfilesetup{author=Leonardo Taglialegne}
+\newcommand\lhsfile[1]{\section[#1.lhs]{\textattachfile{src/#1.lhs}{src/#1.lhs}}\label{file:#1}
+\input{src/#1.lhs}}
+
+\usepackage{xltxtra}
+
+\begin{document}
+\maketitle
+
+\textattachfile{main.tex}{main.tex}
+\textattachfile{gparkover.cabal}{gparkover.cabal}
+
+\tableofcontents
+
+\lhsfile{Main}
+\lhsfile{NTFS}
+\lhsfile{Data/Binary/Get/Extra}
+%\lhsfile{Recovery/RightMove}
+
+\end{document}
