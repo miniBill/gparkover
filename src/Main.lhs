@@ -9,14 +9,15 @@ import Data.Binary.Get hiding (getBytes)
 
 import NTFS
 
+parser :: Get (BootSector, Mft)
+parser = do
+    b <- parseBootSector
+    m <- parseMft (bsClustersPerMftRecord b) (bsMftLogicalClusterNumber b)
+    return (b, m)
 
 main :: IO ()
 main = do
     contents <- B.readFile "broken.img"
-    let parser = do
-        b <- parseBootSector
-        m <- parseMft (ebpbClustersPerMftRecord . bsExtendedBpb $ b) ()
-        return (b, m)
     let (bs, mft) = runGet parser contents
     print bs
     print mft

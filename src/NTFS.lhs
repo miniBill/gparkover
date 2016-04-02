@@ -30,21 +30,31 @@ data ExtendedBpb = ExtendedBpb {
 \begin{code}
 data BootSector = BootSector {
     bsOemId :: Text,
-    bsBpb :: Bpb,
-    bsExtendedBpb :: ExtendedBpb }
+    bsBytesPerSector :: Int16,
+    bsSectorsPerCluster :: Int8,
+    bsTotalSectors :: Int64,
+    bsMftLogicalClusterNumber :: Int64,
+    bsMftMirrorLogicalClusterNumber :: Int64,
+    bsClustersPerMftRecord :: Integer }
 \end{code}
 \begin{code}
 instance Show BootSector where
-    show b =
-        "BootSector {\n" ++
-        "\tOEM ID: " ++ unpack (bsOemId b) ++ "\n" ++
-        "\tBPB: " ++ show (bsBpb b) ++ "\n" ++
-        "\tExtended BPB: " ++ show (bsExtendedBpb b) ++ "\n" ++
-        "\tTotal size: " ++ showSize totalSize ++ " + 512 B for the boot sector\n" ++
-        "}" where
+    show b = concat [
+        "BootSector {\n",
+        line "OEM ID" (unpack . bsOemId),
+        line "Bytes per sector" bsBytesPerSector,
+        line "Sectors per cluster" bsSectorsPerCluster,
+        line "Total sectors" bsTotalSectors,
+        line "MFT cluster #" bsMftLogicalClusterNumber,
+        line "MFT mirror cluster #" bsMftMirrorLogicalClusterNumber,
+        line "Clusters per MFT record" bsClustersPerMftRecord,
+        line "Total size" (\b -> showSize totalSize ++ "+ 512 B for the boot sector"),
+        "}"] where
+        line :: Show a => String -> (BootSector -> a) -> String
+        line h f = "\t" ++ h ++ ":" ++ replicate (24 - length h) ' ' ++ show (f b) ++ "\n"
         totalSize = bytesPerSector b * totalSectors b        
-        bytesPerSector = toInteger . bpbBytesPerSector . bsBpb
-        totalSectors   = toInteger . ebpbTotalSectors  . bsExtendedBpb
+        bytesPerSector = toInteger . bsBytesPerSector
+        totalSectors   = toInteger . bsTotalSectors
 \end{code}
 \begin{code}
 iterate :: (a -> a) -> a -> [a]
@@ -71,8 +81,12 @@ parseBootSector = do
     assertBytes [0x55, 0xAA] -- signature
     return $ BootSector {
         bsOemId = oemId,
-        bsBpb = bpb,
-        bsExtendedBpb = extendedBpb }
+        bsBytesPerSector = bpbBytesPerSector bpb,
+        bsSectorsPerCluster = bpbSectorsPerCluster bpb,
+        bsTotalSectors = ebpbTotalSectors extendedBpb,
+        bsMftLogicalClusterNumber = ebpbMftLogicalClusterNumber extendedBpb,
+        bsMftMirrorLogicalClusterNumber = ebpbMftMirrorLogicalClusterNumber extendedBpb,
+        bsClustersPerMftRecord = ebpbClustersPerMftRecord extendedBpb}
 
 assertBytes :: [Word8] -> Get ()
 assertBytes xs = do
@@ -132,6 +146,7 @@ parseExtendedBpb = do
 data Mft = Mft deriving Show
 \end{code}
 \begin{code}
-parseMft :: Get Mft
-parseMft = return Mft
+parseMft :: Integer -> Int64 -> Get Mft
+parseMft clustersPerRecord logicalClusterNumber = do
+    return Mft
 \end{code}
