@@ -4,14 +4,12 @@ module NTFS where
 
 import ClassyPrelude hiding (decodeUtf8)
 
-import qualified Data.ByteString.Lazy as B
-import Data.Binary.Get hiding (getBytes)
 import Data.Bits
 import Data.Int
 import Data.Text.Encoding
 import Data.Word
 
-import Data.Binary.Get.Extra
+import Seeker
 \end{code}
 \begin{code}
 data Bpb = Bpb {
@@ -71,14 +69,14 @@ showSize x = result where
         else ""
 \end{code}
 \begin{code}
-parseBootSector :: Get BootSector
+parseBootSector :: Seeker BootSector
 parseBootSector = do
     skip 3 -- jump instruction, ignored
     oemId <- decodeUtf8 <$> getByteString 8
     bpb <- parseBpb
     extendedBpb <- parseExtendedBpb
     skip 426 -- bootstrap code, ignored
-    assertBytes [0x55, 0xAA] -- signature
+    assertBytes "Signature" [0x55, 0xAA]
     return $ BootSector {
         bsOemId = oemId,
         bsBytesPerSector = bpbBytesPerSector bpb,
@@ -88,24 +86,27 @@ parseBootSector = do
         bsMftMirrorLogicalClusterNumber = ebpbMftMirrorLogicalClusterNumber extendedBpb,
         bsClustersPerMftRecord = ebpbClustersPerMftRecord extendedBpb}
 
-assertBytes :: [Word8] -> Get ()
-assertBytes xs = do
+assertBytes :: String -> [Word8] -> Seeker ()
+assertBytes err xs = do
     let ps = pack xs
     bs <- getByteString $ length ps
     if ps == bs
         then return ()
-        else fail $
-            "Assert failed: got " ++ show bs ++
-            " while expecting " ++ show ps
+        else do
+            addr <- getAddress
+            return ()
+            --fail $
+            --    "Assert failed (" ++ err ++ "): got " ++ show bs ++
+            --    " while expecting " ++ show ps ++ " at address " ++ show addr
 \end{code}
 \begin{code}
-parseBpb :: Get Bpb
+parseBpb :: Seeker Bpb
 parseBpb = do
     bytesPerSector <- getInt16le
     sectorsPerCluster <- getInt8
     assertZeroes 2 -- reserved sectors, must be zero
     assertZeroes 5
-    assertBytes [0xF8] -- media descriptor, F8 is HDD
+    assertBytes "Media descriptor, 0xF8 for HDD" [0xF8]
     assertZeroes 2
     skip 8
     assertZeroes 4
@@ -114,11 +115,11 @@ parseBpb = do
         bpbSectorsPerCluster = sectorsPerCluster }
 \end{code}
 \begin{code}
-assertZeroes :: Int -> Get ()
-assertZeroes n = assertBytes $ replicate n 0
+assertZeroes :: Int -> Seeker ()
+assertZeroes n = assertBytes "Zeroes" $ replicate n 0
 \end{code}
 \begin{code}
-parseExtendedBpb :: Get ExtendedBpb
+parseExtendedBpb :: Seeker ExtendedBpb
 parseExtendedBpb = do
     skip 4
     totalSectors <- getInt64le
@@ -146,7 +147,7 @@ parseExtendedBpb = do
 data Mft = Mft deriving Show
 \end{code}
 \begin{code}
-parseMft :: Integer -> Int64 -> Get Mft
+parseMft :: Integer -> Int64 -> Seeker Mft
 parseMft clustersPerRecord logicalClusterNumber = do
     return Mft
 \end{code}

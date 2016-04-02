@@ -4,21 +4,22 @@ module Main where
 
 import ClassyPrelude
 
-import qualified Data.ByteString.Lazy as B
-import Data.Binary.Get hiding (getBytes)
+import System.IO hiding (print)
 
 import NTFS
-
-parser :: Get (BootSector, Mft)
+import Seeker
+\end{code}
+\begin{code}
+parser :: Seeker (BootSector, Mft)
 parser = do
     b <- parseBootSector
     m <- parseMft (bsClustersPerMftRecord b) (bsMftLogicalClusterNumber b)
     return (b, m)
-
+\end{code}
+\begin{code}
 main :: IO ()
 main = do
-    contents <- B.readFile "broken.img"
-    let (bs, mft) = runGet parser contents
+    (bs, mft) <- withBinaryFile "broken.img" ReadMode (runSeeker parser)
     print bs
     print mft
 \end{code}
