@@ -8,8 +8,11 @@ import Data.Bits
 import Data.Int
 import Data.Text.Encoding
 import Data.Word
+import Numeric (showHex)
+import System.IO
 
 import Seeker
+import Utils
 \end{code}
 \begin{code}
 data Bpb = Bpb {
@@ -22,7 +25,7 @@ data ExtendedBpb = ExtendedBpb {
     ebpbTotalSectors :: Int64,
     ebpbMftLogicalClusterNumber :: Int64,
     ebpbMftMirrorLogicalClusterNumber :: Int64,
-    ebpbClustersPerMftRecord :: Integer }
+    ebpbBytesPerMftRecord :: Integer }
     deriving Show
 \end{code}
 \begin{code}
@@ -33,7 +36,15 @@ data BootSector = BootSector {
     bsTotalSectors :: Int64,
     bsMftLogicalClusterNumber :: Int64,
     bsMftMirrorLogicalClusterNumber :: Int64,
-    bsClustersPerMftRecord :: Integer }
+    bsBytesPerMftRecord :: Integer }
+\end{code}
+\begin{code}
+bsBytesPerCluster :: BootSector -> Integer
+bsBytesPerCluster b = toInteger (bsSectorsPerCluster b) * toInteger (bsBytesPerSector b)
+\end{code}
+\begin{code}
+bsTotalSize :: BootSector -> Integer
+bsTotalSize b = toInteger (bsBytesPerSector b) * toInteger (bsTotalSectors b)
 \end{code}
 \begin{code}
 instance Show BootSector where
@@ -45,28 +56,15 @@ instance Show BootSector where
         line "Total sectors" bsTotalSectors,
         line "MFT cluster #" bsMftLogicalClusterNumber,
         line "MFT mirror cluster #" bsMftMirrorLogicalClusterNumber,
-        line "Clusters per MFT record" bsClustersPerMftRecord,
-        line "Total size" (\b -> showSize totalSize ++ "+ 512 B for the boot sector"),
+        line "Bytes per MFT record" bsBytesPerMftRecord,
+        line "Total size" (\b -> showSize (bsTotalSize b + 512)),
         "}"] where
         line :: Show a => String -> (BootSector -> a) -> String
         line h f = "\t" ++ h ++ ":" ++ replicate (24 - length h) ' ' ++ show (f b) ++ "\n"
-        totalSize = bytesPerSector b * totalSectors b        
-        bytesPerSector = toInteger . bsBytesPerSector
-        totalSectors   = toInteger . bsTotalSectors
 \end{code}
 \begin{code}
 iterate :: (a -> a) -> a -> [a]
 iterate f x =  x : iterate f (f x)
-\end{code}
-\begin{code}
-showSize :: Integer -> String
-showSize x = result where
-    split = map (`mod` 1024) $ iterate (`div` 1024) x
-    zipped = reverse $ zip ["", "K", "M", "G", "T"] split
-    result = foldMap printPiece zipped
-    printPiece (s,i) = if i > 0
-        then show i ++ s ++ "B "
-        else ""
 \end{code}
 \begin{code}
 parseBootSector :: Seeker BootSector
@@ -84,7 +82,7 @@ parseBootSector = do
         bsTotalSectors = ebpbTotalSectors extendedBpb,
         bsMftLogicalClusterNumber = ebpbMftLogicalClusterNumber extendedBpb,
         bsMftMirrorLogicalClusterNumber = ebpbMftMirrorLogicalClusterNumber extendedBpb,
-        bsClustersPerMftRecord = ebpbClustersPerMftRecord extendedBpb}
+        bsBytesPerMftRecord = ebpbBytesPerMftRecord extendedBpb}
 
 assertBytes :: String -> [Word8] -> Seeker ()
 assertBytes err xs = do
@@ -94,10 +92,9 @@ assertBytes err xs = do
         then return ()
         else do
             addr <- getAddress
-            return ()
-            --fail $
-            --    "Assert failed (" ++ err ++ "): got " ++ show bs ++
-            --    " while expecting " ++ show ps ++ " at address " ++ show addr
+            trace ("Assert failed (" ++ err ++ "): got " ++ show bs ++
+                " while expecting " ++ show ps ++ " at address " ++ showHex addr "") $
+                return ()
 \end{code}
 \begin{code}
 parseBpb :: Seeker Bpb
@@ -125,10 +122,10 @@ parseExtendedBpb = do
     totalSectors <- getInt64le
     mftClusterNumber <- getInt64le
     mftMirrorClusterNumber <- getInt64le
-    rawClustersPerMftRecord <- (fromIntegral :: (Int8 -> Integer)) <$> getInt8
-    let clustersPerMftRecord = if rawClustersPerMftRecord >= 0
-        then rawClustersPerMftRecord
-        else 2 ^ abs rawClustersPerMftRecord
+    rawBytesPerMftRecord <- (fromIntegral :: (Int8 -> Integer)) <$> getInt8
+    bytesPerMftRecord <- if rawBytesPerMftRecord >= 0
+        then fail "Cluster number as a size of mft records is not supported"
+        else return $ 2 ^ abs rawBytesPerMftRecord
     skip 3
     rawClustersPerIndexBuffer <- (fromIntegral :: (Int8 -> Integer)) <$> getInt8
     let clustersPerIndexBuffer = if rawClustersPerIndexBuffer >= 0
@@ -141,13 +138,69 @@ parseExtendedBpb = do
         ebpbTotalSectors = totalSectors,
         ebpbMftLogicalClusterNumber = mftClusterNumber,
         ebpbMftMirrorLogicalClusterNumber = mftMirrorClusterNumber,
-        ebpbClustersPerMftRecord = clustersPerMftRecord }
+        ebpbBytesPerMftRecord = bytesPerMftRecord }
 \end{code}
 \begin{code}
-data Mft = Mft deriving Show
+data Mft = Mft {
+    mftRecords :: [MftRecord] }
+
+instance Show Mft where
+    show m = "Mft {\n" ++ concatMap (\r -> "\t" ++ show r ++ "\n") (mftRecords m) ++ "}"
+
+data MftRecord = MftRecord {
+    recAttributes :: [MftAttribute] }
+    deriving Show
+
+data MftAttribute = StandardInformation | Filename Text deriving Show
 \end{code}
 \begin{code}
-parseMft :: Integer -> Int64 -> Seeker Mft
-parseMft clustersPerRecord logicalClusterNumber = do
-    return Mft
+parseMft :: Integer -> Seeker Mft
+parseMft bytesPerRecord = do
+    records <- forM [1,2] (const $ parseMftRecord bytesPerRecord)
+    return $ Mft {
+        mftRecords = records }
+\end{code}
+\begin{code}
+parseMftRecord :: Integer -> Seeker MftRecord
+parseMftRecord bytesPerRecord = do
+    start <- getAddress
+    assertBytes "FILE header" [0x46, 0x49, 0x4C, 0x45]
+    
+    seek AbsoluteSeek (start + 0x14)
+    offsetToFirstAttr <- getInt16le
+    
+    seek AbsoluteSeek (start + toInteger offsetToFirstAttr)
+    attributes <- forM [1,2] (const parseAttribute)
+    
+    seek AbsoluteSeek (start + bytesPerRecord)
+    return $ MftRecord {
+        recAttributes = attributes }
+
+parseAttribute :: Seeker MftAttribute
+parseAttribute = do
+    start <- getAddress
+    typeIdentifier <- getInt32le
+    length <- getInt32le
+    nonResident <- getInt8
+    when (nonResident /= 0) $ fail "Non-resident attributes unsupported"
+    result <- case typeIdentifier of
+        0x10 -> do
+            return StandardInformation
+        0x30 -> do
+            seek AbsoluteSeek (start + 0x10)
+            sizeOfContent <- getInt64le
+            
+            seek AbsoluteSeek (start + 0x14)
+            offsetToContent <- getInt16le
+            
+            seek AbsoluteSeek (start + toInteger offsetToContent)
+            
+            skip 0x40
+            filenameLength <- getInt8
+            skip 1
+            filename <- getByteString $ fromIntegral filenameLength * 2
+            return $ Filename (decodeUtf16LE filename)
+        _ -> fail $ "Unknown attribute"
+    seek AbsoluteSeek (start + toInteger length)
+    return result
 \end{code}

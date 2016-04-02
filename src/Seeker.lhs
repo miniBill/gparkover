@@ -9,6 +9,8 @@ import Data.Bits
 import Data.Int
 import Data.Word (Word16)
 import System.IO
+
+import Utils
 \end{code}
 \begin{code}
 data Seeker a = Seeker { runSeeker :: Handle -> IO a } deriving Functor
@@ -24,12 +26,20 @@ instance Monad Seeker where
         runSeeker (f x') h)
 \end{code}
 \begin{code}
-skip :: Integer -> Seeker ()
-skip i = Seeker (\h -> hSeek h RelativeSeek i)
+skip :: Integral a => a -> Seeker ()
+skip = seek RelativeSeek
+\end{code}
+\begin{code}
+seek :: Integral a => SeekMode -> a -> Seeker ()
+seek k i = Seeker (\h -> hSeek h k (toInteger i))
 \end{code}
 \begin{code}
 getAddress :: Seeker Integer
 getAddress = Seeker hTell
+\end{code}
+\begin{code}
+getFileSize :: Seeker Integer
+getFileSize = Seeker hFileSize
 \end{code}
 \begin{code}
 getByteString :: Int -> Seeker ByteString
@@ -56,9 +66,24 @@ getWord16le :: Seeker Word16
 getWord16le = getWords 2
 \end{code}
 \begin{code}
-getWord64le :: Seeker Word64
-getWord64le = getWords 4
+getWord32le :: Seeker Word32
+getWord32le = getWords 4
 \end{code}
+\begin{code}
+getWord64le :: Seeker Word64
+getWord64le = getWords 8
+\end{code}
+\begin{code}
+search :: ByteString -> Seeker ()
+search bs = do
+    ps <- getByteString (length bs)
+    if bs == ps
+        then return ()
+        else do
+            skip (1 - length bs)
+            search bs
+\end{code}
+
 The following code is taken almost verbatim from Data.Binary.Get.
 
 \begin{code}
@@ -83,6 +108,12 @@ getInt8 = fromIntegral <$> getWord8
 getInt16le :: Seeker Int16
 getInt16le = fromIntegral <$> getWord16le
 {-# INLINE getInt16le #-}
+\end{code}
+\begin{code}
+-- | Read an Int32 in little endian format
+getInt32le :: Seeker Int32
+getInt32le = fromIntegral <$> getWord32le
+{-# INLINE getInt32le #-}
 \end{code}
 \begin{code}
 -- | Read an Int64 in little endian format
