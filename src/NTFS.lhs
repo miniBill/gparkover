@@ -143,14 +143,17 @@ parseExtendedBpb = do
 \begin{code}
 data Mft = Mft {
     mftRecords :: [MftRecord] }
-
+\end{code}
+\begin{code}
 instance Show Mft where
     show m = "Mft {\n" ++ concatMap (\r -> "\t" ++ show r ++ "\n") (mftRecords m) ++ "}"
-
+\end{code}
+\begin{code}
 data MftRecord = MftRecord {
     recAttributes :: [MftAttribute] }
     deriving Show
-
+\end{code}
+\begin{code}
 data MftAttribute = StandardInformation | Filename Text deriving Show
 \end{code}
 \begin{code}
@@ -175,7 +178,8 @@ parseMftRecord bytesPerRecord = do
     seek AbsoluteSeek (start + bytesPerRecord)
     return $ MftRecord {
         recAttributes = attributes }
-
+\end{code}
+\begin{code}
 parseAttribute :: Seeker MftAttribute
 parseAttribute = do
     start <- getAddress
