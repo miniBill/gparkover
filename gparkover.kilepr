@@ -9,7 +9,7 @@ kile_livePreviewStatusUserSpecified=false
 kile_livePreviewTool=LivePreview-PDFLaTeX
 kileprversion=2
 kileversion=2.9.60
-lastDocument=src/Seeker.lhs
+lastDocument=src/NTFS.lhs
 masterDocument=
 name=gparkover
 pkg_extIsRegExp=false
@@ -78,32 +78,32 @@ order=-1
 
 [item:src/Main.lhs]
 archive=true
-column=42
+column=12
 encoding=UTF-8
 highlight=Literate Haskell
-line=31
+line=12
 mode=Literate Haskell
-open=true
+open=false
 order=1
 
 [item:src/NTFS.lhs]
 archive=true
-column=33
+column=12
 encoding=UTF-8
 highlight=Literate Haskell
-line=27
+line=181
 mode=Literate Haskell
 open=true
 order=0
 
 [item:src/Seeker.lhs]
 archive=true
-column=33
+column=10
 encoding=UTF-8
 highlight=Literate Haskell
-line=96
+line=84
 mode=Literate Haskell
-open=true
+open=false
 order=2
 
 [item:src/Utils.lhs]
@@ -113,7 +113,7 @@ encoding=UTF-8
 highlight=Literate Haskell
 line=14
 mode=Literate Haskell
-open=true
+open=false
 order=3
 
 [view-settings,view=0,item:main.tex]
@@ -123,22 +123,22 @@ JumpList=
 ViMarks=.,39,14,[,39,9,],39,14
 
 [view-settings,view=0,item:src/Main.lhs]
-CursorColumn=42
-CursorLine=31
+CursorColumn=12
+CursorLine=12
 JumpList=
-ViMarks=.,31,30,[,31,30,],31,41
+ViMarks=.,37,14,[,37,14,],37,21
 
 [view-settings,view=0,item:src/NTFS.lhs]
-CursorColumn=33
-CursorLine=27
+CursorColumn=12
+CursorLine=181
 JumpList=
-ViMarks=.,14,0,[,14,0,],14,11
+ViMarks=.,181,0,[,180,0,],181,11
 
 [view-settings,view=0,item:src/Seeker.lhs]
-CursorColumn=33
-CursorLine=96
+CursorColumn=10
+CursorLine=84
 JumpList=
-ViMarks=.,88,7,[,88,7,],88,7
+ViMarks=.,84,10,[,84,10,],84,10
 
 [view-settings,view=0,item:src/Utils.lhs]
 CursorColumn=0

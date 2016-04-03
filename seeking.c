@@ -6,9 +6,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-char * sizes[] = { "c", "K", "M", "G", "T", "P" };
+static char * sizes[] = { "c", "K", "M", "G", "T", "P" };
 
-void printSize2 (off_t size, int s)
+static void printSize2 (off_t size, int s)
 {
 	off_t next = size / 1024;
 	if (next > 0)
@@ -16,12 +16,12 @@ void printSize2 (off_t size, int s)
 	printf ("%llu%sB ", size % 1024, sizes[s]);
 }
 
-void printSize (off_t size)
+static void printSize (off_t size)
 {
 	printSize2 (size, 0);
 }
 
-void runAdvice2 (char * broken, off_t start, off_t length, long long displacement, int s)
+static void runAdvice2 (char * broken, off_t start, off_t length, long long displacement, int s)
 {
 	if (start % 1024 == 0 && length % 1024 == 0 && displacement % 1024 == 0)
 	{
@@ -32,7 +32,7 @@ void runAdvice2 (char * broken, off_t start, off_t length, long long displacemen
 	printf ("dd if=%s of=rebuilt.img bs=1%s skip=%llu seek=%llu\n", broken, sizes [s], start + length, start);
 }
 
-void runAdvice (char * broken, long long i, off_t length, long long displacement)
+static void runAdvice (char * broken, long long i, off_t length, long long displacement)
 {
 	if (length < displacement/2)
 		return;
@@ -53,9 +53,16 @@ int main (int argc, char ** argv)
 		fprintf (stderr, "Usage: %s filename offset\n", argv[0]);
 		return 1;
 	}
-	int fd = open (argv[1], O_RDONLY);
-	long filesize = lseek (fd, 0, SEEK_END);
-	lseek (fd, 0, SEEK_SET);
+
+	struct stat sb;
+	if (stat (argv [1], &sb) == -1)
+	{
+		perror ("stat");
+		return 1;
+	}
+
+	long long filesize = sb.st_size;
+	int fd = open (argv [1], O_RDONLY);
 	char * file = mmap (NULL, filesize, PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
 	off_t length = 0;
 	long long displacement = atoll (argv[2]);
