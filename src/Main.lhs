@@ -19,15 +19,17 @@ parser = do
     seek AbsoluteSeek $ (toInteger $ bsMftLogicalClusterNumber b) * bsBytesPerCluster b
     m <- parseMft $ bsBytesPerMftRecord b
     let footOffset = toInteger $ bsTotalSize b
-    traceM ("MBR copy should be at " ++ showSize footOffset)
+    traceM $ "MBR copy should be at " ++ showSize footOffset
     seek AbsoluteSeek footOffset
-    --end <- getFileSize
-    --seek AbsoluteSeek (end - 512)
     search rawHead
     skip (-512)
     realFootOffset <- getAddress
-    traceM ("Actually, it was at " ++ showSize realFootOffset)
+    traceM $ "Actually, it was at " ++ showSize realFootOffset
+    let displacement = realFootOffset - footOffset
+    traceM $ "So we moved " ++ showSize displacement
     b' <- parseBootSector
+    seek AbsoluteSeek 0
+    duplicates <- searchDupes displacement realFootOffset
     return (b, m, b')
 \end{code}
 \begin{code}

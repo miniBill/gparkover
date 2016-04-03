@@ -13,7 +13,7 @@ import System.IO
 import Utils
 \end{code}
 \begin{code}
-data Seeker a = Seeker { runSeeker :: Handle -> IO a } deriving Functor
+newtype Seeker a = Seeker { runSeeker :: Handle -> IO a } deriving Functor
 
 instance Applicative Seeker where
     pure = return
@@ -22,8 +22,8 @@ instance Applicative Seeker where
 instance Monad Seeker where
     return = Seeker . const . return
     x >>= f = Seeker (\h -> do
-        x' <- runSeeker x h
-        runSeeker (f x') h)
+        y <- runSeeker x h
+        runSeeker (f y) h)
 \end{code}
 \begin{code}
 skip :: Integral a => a -> Seeker ()
@@ -82,6 +82,10 @@ search bs = do
         else do
             skip (1 - length bs)
             search bs
+\end{code}
+\begin{code}
+searchDupes :: Integer -> Integer -> Seeker [Integer]
+searchDupes displacement max = undefined
 \end{code}
 
 The following code is taken almost verbatim from Data.Binary.Get.

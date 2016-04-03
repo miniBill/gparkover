@@ -57,7 +57,7 @@ executable gparkover
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.8 && <4.9, classy-prelude >= 0.12 && <0.13, bytestring >= 0.10 && <0.11, binary >= 0.7 && <0.8, text
+  build-depends:       base >=4.8 && <4.9, classy-prelude >= 0.12 && <0.13, bytestring >= 0.10 && <0.11, binary >= 0.7 && <0.8, text, mtl
   
   -- Directories containing source files.
   hs-source-dirs:      src
