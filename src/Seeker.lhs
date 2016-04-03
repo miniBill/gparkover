@@ -83,10 +83,6 @@ search bs = do
             skip (1 - length bs)
             search bs
 \end{code}
-\begin{code}
-searchDupes :: Integer -> Integer -> Seeker [Integer]
-searchDupes displacement max = undefined
-\end{code}
 
 The following code is taken almost verbatim from Data.Binary.Get.
 

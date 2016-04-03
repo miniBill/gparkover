@@ -4,14 +4,14 @@ module Main where
 
 import ClassyPrelude
 
-import System.IO hiding (print)
+import System.IO hiding (print, putStrLn)
 
 import NTFS
 import Seeker
 import Utils
 \end{code}
 \begin{code}
-parser :: Seeker (BootSector, Mft, BootSector)
+parser :: Seeker (BootSector, Mft, BootSector, Integer)
 parser = do
     rawHead <- getByteString 512
     seek AbsoluteSeek 0
@@ -26,17 +26,20 @@ parser = do
     realFootOffset <- getAddress
     traceM $ "Actually, it was at " ++ showSize realFootOffset
     let displacement = realFootOffset - footOffset
-    traceM $ "So we moved " ++ showSize displacement
+    traceM $ "So we moved " ++ showSize displacement ++ ", that is " ++ show displacement ++ " bytes"
     b' <- parseBootSector
-    seek AbsoluteSeek 0
-    duplicates <- searchDupes displacement realFootOffset
-    return (b, m, b')
+    return (b, m, b', displacement)
 \end{code}
 \begin{code}
 main :: IO ()
 main = do
-    (bs, mft, bs') <- withBinaryFile "broken.img" ReadMode (runSeeker parser)
-    print bs
-    print mft
-    print bs'
+    args <- getArgs
+    case args of
+        [] -> putStrLn "You must specify the input file!"
+        (file:_) -> do
+            (bs, mft, bs', d) <- withBinaryFile (unpack file) ReadMode (runSeeker parser)
+            print bs
+            print mft
+            print bs'
+            putStrLn $ "Run this: ./seeking " ++ file ++ " " ++ tshow d
 \end{code}
